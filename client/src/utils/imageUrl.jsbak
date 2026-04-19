@@ -1,0 +1,17 @@
+/**
+ * Возвращает URL картинки, пригодный для отображения на текущем домене.
+ * Убирает http://localhost:5001 и т.п., чтобы не было Mixed Content на HTTPS.
+ */
+export function getImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const s = url.trim();
+  if (s.startsWith('http://localhost') || s.startsWith('https://localhost')) {
+    try {
+      return new URL(s).pathname;
+    } catch {
+      return s.replace(/^https?:\/\/[^/]+/, '') || s;
+    }
+  }
+  if (s.startsWith('/')) return s;
+  return s;
+}

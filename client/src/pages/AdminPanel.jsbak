@@ -1,0 +1,2815 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
+import { useColors } from '../context/ColorContext';
+import axios from 'axios';
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaSignOutAlt,
+  FaBoxes,
+  FaList,
+  FaEnvelope,
+  FaShoppingCart,
+  FaGlobe,
+  FaChartBar,
+  FaBars,
+  FaTimes,
+  FaPalette,
+  FaFilePdf,
+  FaHandshake,
+  FaImages,
+  FaStar,
+  FaHome,
+  FaCheck
+} from 'react-icons/fa';
+import FileUploader from '../components/FileUploader';
+import './AdminPanel.css';
+
+
+import API_URL from '../config';
+import { getImageUrl } from '../utils/imageUrl';
+
+const AdminPanel = () => {
+  const [catalogs, setCatalogs] = useState([]);
+  const catalogFileRef = useRef(null);
+
+  const { theme } = useTheme();
+  const { colors, updateColors } = useColors();
+  const navigate = useNavigate();
+
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [reports, setReports] = useState({
+    totalProducts: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    completedOrders: 0
+  });
+  const [smtpSettings, setSmtpSettings] = useState({
+    host: '',
+    port: 587,
+    secure: false,
+    user: '',
+    password: '',
+    from_email: '',
+    from_name: ''
+  });
+
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productForm, setProductForm] = useState({
+    category_id: '',
+    name_tm: '',
+    name_ru: '',
+    name_en: '',
+    description_tm: '',
+    description_ru: '',
+    description_en: '',
+    price: '',
+    image_url: '',
+    color: '',
+    volume: '',
+    in_stock: true,
+    featured: false
+  });
+
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    name_tm: '',
+    name_ru: '',
+    name_en: '',
+    description: ''
+  });
+
+  const [languageForm, setLanguageForm] = useState({
+    code: '',
+    name: '',
+    flag: '🏳️'
+  });
+
+  const [languages, setLanguages] = useState([
+    { code: 'tm', name: 'Türkmen', flag: '🇹🇲' },
+    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+    { code: 'en', name: 'English', flag: '🇬🇧' }
+  ]);
+
+  const [colorForm, setColorForm] = useState({
+    primary: '#4d4125',
+    secondary: '#ccc180',
+    text: '#333333',
+    text_light: '#666666',
+    background: '#ffffff',
+    header_bg: '#ffffff',
+    header_text: '#333333',
+    footer_bg: '#4d4125',
+    footer_text: '#ffffff',
+    button_bg: '#ccc180',
+    button_text: '#ffffff',
+    button_hover: '#b8a870',
+    link: '#4d4125',
+    link_hover: '#ccc180',
+    border: '#e0e0e0',
+    card_bg: '#ffffff',
+    card_shadow: 'rgba(77, 65, 37, 0.1)'
+  });
+
+  const [colorTheme, setColorTheme] = useState('light');
+  const [banners, setBanners] = useState([]);
+  const [bannerForm, setBannerForm] = useState({
+    image_url: '',
+    title_tm: '',
+    title_ru: '',
+    title_en: '',
+    link: '',
+    sort_order: 0,
+    is_active: true
+  });
+  const [editingBanner, setEditingBanner] = useState(null);
+
+  // Portfolio state
+  const [portfolioItems, setPortfolioItems] = useState([]);
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [editingPortfolio, setEditingPortfolio] = useState(null);
+  const [portfolioForm, setPortfolioForm] = useState({
+    title_tm: '', title_ru: '', title_en: '',
+    description_tm: '', description_ru: '', description_en: '',
+    image_url: '', materials_used: '', is_active: true, sort_order: 0
+  });
+
+  // Reviews state
+  const [adminReviews, setAdminReviews] = useState([]);
+  const [reviewsError, setReviewsError] = useState(null);
+
+  // Cooperation state
+  const [cooperationItems, setCooperationItems] = useState([]);
+
+  // Logs state
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [actionLogs, setActionLogs] = useState([]);
+  const [logTab, setLogTab] = useState('errors');
+  const [showBannerModal, setShowBannerModal] = useState(false);
+
+  // Загружаем данные при смене раздела (после первой загрузки страницы)
+  useEffect(() => {
+    if (!isLoaded) {
+      setIsLoaded(true);
+      return; // Пропускаем первую загрузку
+    }
+
+    // Проверяем авторизацию перед загрузкой данных
+    const token = localStorage.getItem('adminToken');
+    if (!token) return; // Не загружаем данные если не авторизован
+
+    if (activeSection === 'products') fetchProducts();
+    if (activeSection === 'categories') fetchCategories();
+    if (activeSection === 'orders') fetchOrders();
+    if (activeSection === 'smtp') fetchSmtpSettings();
+    if (activeSection === 'reports') fetchReports();
+    if (activeSection === 'banners') fetchBanners();
+    if (activeSection === 'portfolio') fetchPortfolio();
+    if (activeSection === 'reviews') fetchAdminReviews();
+    if (activeSection === 'cooperation') fetchCooperation();
+    if (activeSection === 'pdfcatalog') fetchCatalogs();
+    if (activeSection === 'logs') fetchLogs();
+    if (activeSection === 'dashboard') {
+      // Для дашборда загружаем всё
+      fetchOrders();
+      fetchReports();
+      fetchPortfolio();
+      fetchAdminReviews();
+      fetchCooperation();
+    }
+  }, [activeSection, isLoaded]);
+
+  // Обновляем цвета при смене темы
+  useEffect(() => {
+    if (colorTheme) {
+      loadColorsForTheme(colorTheme);
+    }
+  }, [colorTheme]);
+
+  // Загрузка цветов для выбранной темы
+  const loadColorsForTheme = async (themeToLoad) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) return;
+
+      const response = await axios.get(
+        `${API_URL}/admin/colors?theme=${themeToLoad}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      const fetchedColors = response.data;
+      setColorForm({
+        primary: fetchedColors.primary || '#4d4125',
+        secondary: fetchedColors.secondary || '#ccc180',
+        text: fetchedColors.text || (themeToLoad === 'dark' ? '#e0e0e0' : '#333333'),
+        text_light: fetchedColors.text_light || (themeToLoad === 'dark' ? '#b0b0b0' : '#666666'),
+        background: fetchedColors.background || (themeToLoad === 'dark' ? '#1a1a1a' : '#ffffff'),
+        header_bg: fetchedColors.header_bg || (themeToLoad === 'dark' ? '#2d2d2d' : '#ffffff'),
+        header_text: fetchedColors.header_text || (themeToLoad === 'dark' ? '#e0e0e0' : '#333333'),
+        footer_bg: fetchedColors.footer_bg || '#4d4125',
+        footer_text: fetchedColors.footer_text || '#ffffff',
+        button_bg: fetchedColors.button_bg || '#ccc180',
+        button_text: fetchedColors.button_text || '#ffffff',
+        button_hover: fetchedColors.button_hover || '#b8a870',
+        link: fetchedColors.link || (themeToLoad === 'dark' ? '#ccc180' : '#4d4125'),
+        link_hover: fetchedColors.link_hover || (themeToLoad === 'dark' ? '#e0e0e0' : '#ccc180'),
+        border: fetchedColors.border || (themeToLoad === 'dark' ? '#404040' : '#e0e0e0'),
+        card_bg: fetchedColors.card_bg || (themeToLoad === 'dark' ? '#2d2d2d' : '#ffffff'),
+        card_shadow: fetchedColors.card_shadow || (themeToLoad === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(77, 65, 37, 0.1)')
+      });
+    } catch (error) {
+      console.error('Error loading colors for theme:', error);
+    }
+  };
+
+  // Загружаем цвета при изменении темы в форме
+  useEffect(() => {
+    loadColorsForTheme(colorTheme);
+  }, [colorTheme]);
+
+  const checkAuth = () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+    }
+  };
+  // Katalog Zok pdf fayl
+  const handleCatalogUpload = async () => {
+    console.log('Button clicked, file:', catalogFileRef.current);
+
+    if (!catalogFileRef.current) {
+      alert('Выберите файл!');
+      return;
+    }
+
+    const file = catalogFileRef.current;
+    console.log('File info:', file.name, file.size, file.type);
+
+    // Проверяем, что это PDF
+    if (file.type !== 'application/pdf') {
+      alert('Пожалуйста, выберите PDF файл!');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('catalog', file);
+    formData.append('title', 'Каталог ZOK');
+
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      alert('Вы не авторизованы! Войдите в админку.');
+      return;
+    }
+
+    try {
+      console.log('Sending request to:', `${API_URL}/catalog/upload`);
+      const response = await axios.post(`${API_URL}/catalog/upload`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('Success:', response.data);
+      alert('Каталог загружен!');
+      fetchCatalogs();
+    } catch (error) {
+      console.error('Error uploading catalog:', error);
+      console.error('Response:', error.response?.data);
+      alert('Ошибка загрузки: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  // Удалить каталог
+  const handleDeleteCatalog = async (id) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот каталог?')) return;
+
+    try {
+      await axios.delete(`${API_URL}/catalog/${id}`, getAuthHeaders());
+      alert('Каталог удалён!');
+      fetchCatalogs();
+    } catch (error) {
+      console.error('Error deleting catalog:', error);
+      alert('Ошибка удаления: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+
+  const fetchCatalogs = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/catalog/all`, getAuthHeaders());
+
+      setCatalogs(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      return { headers: {} };
+    }
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/products`, getAuthHeaders());
+      setProducts(response.data);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/admin/login');
+      }
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/categories`, getAuthHeaders());
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/orders`, getAuthHeaders());
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const [productsRes, ordersRes] = await Promise.all([
+        axios.get(`${API_URL}/admin/products`, getAuthHeaders()),
+        axios.get(`${API_URL}/admin/orders`, getAuthHeaders())
+      ]);
+
+      const allOrders = ordersRes.data;
+      const totalRevenue = allOrders
+        .filter(o => o.status === 'completed')
+        .reduce((sum, order) => sum + (parseFloat(order.total_price) || 0), 0);
+
+      setReports({
+        totalProducts: productsRes.data.length,
+        totalOrders: allOrders.length,
+        totalRevenue: totalRevenue,
+        pendingOrders: allOrders.filter(o => o.status === 'pending').length,
+        completedOrders: allOrders.filter(o => o.status === 'completed').length
+      });
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    }
+  };
+
+  const fetchSmtpSettings = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/smtp`, getAuthHeaders());
+      if (response.data) {
+        setSmtpSettings(prev => ({
+          ...prev,
+          ...response.data,
+          // password не приходит из API по соображениям безопасности
+          password: ''
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching SMTP settings:', error);
+    }
+  };
+
+  const handleProductChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setProductForm({
+      ...productForm,
+      [name]: type === 'checkbox' ? checked : value
+    });
+  };
+
+  const handleCategoryChange = (e) => {
+    const { name, value } = e.target;
+    setCategoryForm({
+      ...categoryForm,
+      [name]: value
+    });
+  };
+
+  const handleSmtpChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setSmtpSettings(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleLanguageChange = (e) => {
+    const { name, value } = e.target;
+    setLanguageForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingProduct) {
+        await axios.put(
+          `${API_URL}/admin/products/${editingProduct.id}`,
+          productForm,
+          getAuthHeaders()
+        );
+      } else {
+        await axios.post(
+          `${API_URL}/admin/products`,
+          productForm,
+          getAuthHeaders()
+        );
+      }
+      setShowProductModal(false);
+      setEditingProduct(null);
+      resetProductForm();
+      fetchProducts();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/admin/login');
+      }
+      alert('Ошибка: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setProductForm({
+      category_id: product.category_id || '',
+      name_tm: product.name_tm || product.name || '',
+      name_ru: product.name_ru || '',
+      name_en: product.name_en || product.name || '',
+      description_tm: product.description_tm || '',
+      description_ru: product.description_ru || '',
+      description_en: product.description_en || product.description || '',
+      price: product.price || '',
+      image_url: product.image_url || '',
+      color: product.color || '',
+      volume: product.volume || '',
+      in_stock: product.in_stock !== undefined ? product.in_stock : true,
+      featured: product.featured || false
+    });
+    setShowProductModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот продукт?')) {
+      return;
+    }
+    try {
+      await axios.delete(`${API_URL}/admin/products/${id}`, getAuthHeaders());
+      fetchProducts();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/admin/login');
+      }
+      alert('Ошибка при удалении');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('admin');
+    navigate('/admin/login');
+  };
+
+  const resetProductForm = () => {
+    setProductForm({
+      category_id: '',
+      name_tm: '',
+      name_ru: '',
+      name_en: '',
+      description_tm: '',
+      description_ru: '',
+      description_en: '',
+      price: '',
+      image_url: '',
+      color: '',
+      volume: '',
+      in_stock: true,
+      featured: false
+    });
+    setEditingProduct(null);
+  };
+
+  const openNewProductModal = () => {
+    resetProductForm();
+    setShowProductModal(true);
+  };
+
+  const openNewCategoryModal = () => {
+    setEditingCategory(null);
+    setCategoryForm({
+      name: '',
+      name_tm: '',
+      name_ru: '',
+      name_en: '',
+      description: ''
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleCategorySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingCategory) {
+        await axios.put(
+          `${API_URL}/admin/categories/${editingCategory.id}`,
+          categoryForm,
+          getAuthHeaders()
+        );
+      } else {
+        await axios.post(
+          `${API_URL}/admin/categories`,
+          categoryForm,
+          getAuthHeaders()
+        );
+      }
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (error) {
+      alert('Ошибка сохранения категории: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleCategoryEdit = (category) => {
+    setEditingCategory(category);
+    setCategoryForm({
+      name: category.name || '',
+      name_tm: category.name_tm || category.name || '',
+      name_ru: category.name_ru || '',
+      name_en: category.name_en || category.name || '',
+      description: category.description || ''
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleCategoryDelete = async (id) => {
+    if (!window.confirm('Удалить категорию? Продукты сохранятся без категории.')) return;
+    try {
+      await axios.delete(`${API_URL}/admin/categories/${id}`, getAuthHeaders());
+      fetchCategories();
+    } catch (error) {
+      alert('Ошибка при удалении категории');
+    }
+  };
+
+  const handleOrderStatusChange = async (orderId, status) => {
+    try {
+      await axios.put(
+        `${API_URL}/admin/orders/${orderId}/status`,
+        { status },
+        getAuthHeaders()
+      );
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId ? { ...order, status } : order
+        )
+      );
+    } catch (error) {
+      alert('Ошибка обновления статуса заказа');
+    }
+  };
+
+  const handleSmtpSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API_URL}/admin/smtp`, smtpSettings, getAuthHeaders());
+      alert('SMTP настройки сохранены');
+      fetchSmtpSettings();
+    } catch (error) {
+      alert('Ошибка сохранения SMTP настроек: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleAddLanguage = async (e) => {
+    e.preventDefault();
+    if (!languageForm.code || !languageForm.name) {
+      alert('Пожалуйста, заполните код и название языка');
+      return;
+    }
+
+    try {
+      const newLang = {
+        code: languageForm.code.toLowerCase(),
+        name: languageForm.name,
+        flag: languageForm.flag || '🏳️'
+      };
+
+      await axios.post(`${API_URL}/admin/languages`, newLang, getAuthHeaders());
+      setLanguages([...languages, newLang]);
+      setLanguageForm({ code: '', name: '', flag: '🏳️' });
+      alert('Язык успешно добавлен!');
+    } catch (error) {
+      alert('Ошибка при добавлении языка: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleRemoveLanguage = async (code) => {
+    if (code === 'ru' || code === 'en' || code === 'tm') {
+      alert('Нельзя удалить системный язык');
+      return;
+    }
+
+    if (!window.confirm(`Вы уверены, что хотите удалить язык ${code}?`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_URL}/admin/languages/${code}`, getAuthHeaders());
+      setLanguages(languages.filter(l => l.code !== code));
+      alert('Язык успешно удален!');
+    } catch (error) {
+      alert('Ошибка при удалении языка: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleColorChange = (e) => {
+    const { name, value } = e.target;
+    setColorForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleColorSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await updateColors(colorForm, colorTheme);
+      alert(`Цвета для темы "${colorTheme === 'light' ? 'Светлая' : 'Темная'}" успешно обновлены!`);
+      // Перезагружаем цвета для текущей темы
+      loadColorsForTheme(colorTheme);
+    } catch (error) {
+      alert('Ошибка при обновлении цветов: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  // Баннеры
+  const fetchBanners = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/banners`, getAuthHeaders());
+      setBanners(response.data);
+    } catch (error) {
+      console.error('Error fetching banners:', error);
+    }
+  };
+
+  const handleBannerSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingBanner) {
+        await axios.put(`${API_URL}/admin/banners/${editingBanner.id}`, bannerForm, getAuthHeaders());
+      } else {
+        await axios.post(`${API_URL}/admin/banners`, bannerForm, getAuthHeaders());
+      }
+      setShowBannerModal(false);
+      setEditingBanner(null);
+      resetBannerForm();
+      fetchBanners();
+      alert('Баннер успешно сохранен!');
+    } catch (error) {
+      alert('Ошибка: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleEditBanner = (banner) => {
+    setEditingBanner(banner);
+    setBannerForm({
+      image_url: banner.image_url || '',
+      title_tm: banner.title_tm || '',
+      title_ru: banner.title_ru || '',
+      title_en: banner.title_en || '',
+      link: banner.link || '',
+      sort_order: banner.sort_order || 0,
+      is_active: banner.is_active !== undefined ? banner.is_active : true
+    });
+    setShowBannerModal(true);
+  };
+
+  const handleDeleteBanner = async (id) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот баннер?')) return;
+    try {
+      await axios.delete(`${API_URL}/admin/banners/${id}`, getAuthHeaders());
+      fetchBanners();
+      alert('Баннер удален!');
+    } catch (error) {
+      alert('Ошибка при удалении: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const resetBannerForm = () => {
+    setBannerForm({
+      image_url: '',
+      title_tm: '',
+      title_ru: '',
+      title_en: '',
+      link: '',
+      sort_order: 0,
+      is_active: true
+    });
+    setEditingBanner(null);
+  };
+
+  // Тест SMTP
+  const testSmtp = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/admin/smtp/test`, {}, getAuthHeaders());
+      alert('Тестовое письмо успешно отправлено! Проверьте почту.');
+    } catch (error) {
+      alert('Ошибка при отправке тестового письма: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  // ========== PORTFOLIO ==========
+  const fetchPortfolio = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/portfolio`, getAuthHeaders());
+      setPortfolioItems(response.data);
+    } catch (error) {
+      console.error('Error fetching portfolio:', error);
+    }
+  };
+
+  const handleDeletePortfolio = async (id) => {
+    if (!window.confirm('Удалить проект из портфолио?')) return;
+    try {
+      await axios.delete(`${API_URL}/admin/portfolio/${id}`, getAuthHeaders());
+      fetchPortfolio();
+    } catch (error) {
+      alert('Ошибка удаления');
+    }
+  };
+
+  const handlePortfolioChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setPortfolioForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handlePortfolioSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingPortfolio) {
+        await axios.put(`${API_URL}/admin/portfolio/${editingPortfolio.id}`, portfolioForm, getAuthHeaders());
+      } else {
+        await axios.post(`${API_URL}/admin/portfolio`, portfolioForm, getAuthHeaders());
+      }
+      setShowPortfolioModal(false);
+      setEditingPortfolio(null);
+      resetPortfolioForm();
+      fetchPortfolio();
+      alert('Проект успешно сохранён!');
+    } catch (error) {
+      alert('Ошибка: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleEditPortfolio = (item) => {
+    setEditingPortfolio(item);
+    setPortfolioForm({
+      title_tm: item.title_tm || '', title_ru: item.title_ru || '', title_en: item.title_en || '',
+      description_tm: item.description_tm || '', description_ru: item.description_ru || '', description_en: item.description_en || '',
+      image_url: item.image_url || '', materials_used: item.materials_used || '',
+      is_active: item.is_active !== undefined ? item.is_active : true, sort_order: item.sort_order || 0
+    });
+    setShowPortfolioModal(true);
+  };
+
+  const resetPortfolioForm = () => {
+    setPortfolioForm({
+      title_tm: '', title_ru: '', title_en: '',
+      description_tm: '', description_ru: '', description_en: '',
+      image_url: '', materials_used: '', is_active: true, sort_order: 0
+    });
+    setEditingPortfolio(null);
+  };
+
+  // ========== REVIEWS ==========
+  const fetchAdminReviews = async () => {
+    const token = localStorage.getItem('adminToken');
+    
+    if (!token) {
+      setReviewsError('Вы не авторизованы. Пожалуйста, войдите в админ-панель.');
+      return;
+    }
+    
+    setReviewsError(null);
+    try {
+      const response = await axios.get(`${API_URL}/admin/reviews`, getAuthHeaders());
+      setAdminReviews(response.data);
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || error.message || 'Ошибка при загрузке отзывов';
+      setReviewsError(errorMsg + ' (код: ' + error.response?.status + ')');
+    }
+  };
+
+  // ========== COOPERATION ==========
+  const fetchCooperation = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/cooperation`, getAuthHeaders());
+      setCooperationItems(response.data);
+    } catch (error) {
+      console.error('Error fetching cooperation:', error);
+    }
+  };
+
+  const handleDeleteCooperation = async (id) => {
+    if (!window.confirm('Удалить эту заявку?')) return;
+    try {
+      await axios.delete(`${API_URL}/cooperation/${id}`, getAuthHeaders());
+      fetchCooperation();
+    } catch (error) {
+      console.error('Error deleting cooperation:', error);
+      alert('Ошибка удаления');
+    }
+  };
+
+  const handleUpdateCooperationStatus = async (id, status) => {
+    try {
+      await axios.put(`${API_URL}/cooperation/${id}`, { status }, getAuthHeaders());
+      fetchCooperation();
+    } catch (error) {
+      console.error('Error updating cooperation status:', error);
+      alert('Ошибка обновления');
+    }
+  };
+
+  const handleApproveReview = async (id, approved) => {
+    try {
+      await axios.put(`${API_URL}/admin/reviews/${id}/approve`, { is_approved: approved }, getAuthHeaders());
+      fetchAdminReviews();
+    } catch (error) {
+      alert('Ошибка');
+    }
+  };
+
+  const handleDeleteReview = async (id) => {
+    if (!window.confirm('Удалить отзыв?')) return;
+    try {
+      await axios.delete(`${API_URL}/admin/reviews/${id}`, getAuthHeaders());
+      fetchAdminReviews();
+    } catch (error) {
+      alert('Ошибка удаления');
+    }
+  };
+
+  // ========== LOGS ==========
+  const fetchLogs = async () => {
+    try {
+      const [errRes, actRes] = await Promise.all([
+        axios.get(`${API_URL}/logs/errors`, getAuthHeaders()),
+        axios.get(`${API_URL}/logs/actions`, getAuthHeaders())
+      ]);
+      setErrorLogs(errRes.data);
+      setActionLogs(actRes.data);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    }
+  };
+
+  const clearLogs = async (type) => {
+    if (!window.confirm(`Очистить логи ${type === 'errors' ? 'ошибок' : 'действий'}?`)) return;
+    try {
+      await axios.delete(`${API_URL}/logs/${type}`, getAuthHeaders());
+      fetchLogs();
+    } catch (error) {
+      alert('Ошибка очистки логов');
+    }
+  };
+
+  return (
+    <div className={`admin-panel-page ${theme}`}>
+      {/* Mobile menu toggle */}
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        {sidebarOpen ? <FaTimes /> : <FaBars />}
+      </button>
+
+      {/* Mobile overlay */}
+      <div
+        className={`mobile-menu-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <div className="admin-panel-layout">
+        {/* Sidebar */}
+        <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <h2>ZOK Admin</h2>
+          </div>
+          <nav className="sidebar-nav">
+            <button className={`sidebar-link ${activeSection === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveSection('dashboard'); setSidebarOpen(false); }}>
+              <FaHome /> Дашборд
+            </button>
+            <button className={`sidebar-link ${activeSection === 'pdfcatalog' ? 'active' : ''}`} onClick={() => { setActiveSection('pdfcatalog'); fetchCatalogs(); setSidebarOpen(false); }}>
+              <FaFilePdf /> PDF Каталог
+            </button>
+
+            <button className={`sidebar-link ${activeSection === 'products' ? 'active' : ''}`} onClick={() => { setActiveSection('products'); setSidebarOpen(false); }}>
+              <FaBoxes /> Продукты
+            </button>
+            <button className={`sidebar-link ${activeSection === 'categories' ? 'active' : ''}`} onClick={() => { setActiveSection('categories'); setSidebarOpen(false); }}>
+              <FaList /> Категории
+            </button>
+            <button className={`sidebar-link ${activeSection === 'orders' ? 'active' : ''}`} onClick={() => { setActiveSection('orders'); setSidebarOpen(false); }}>
+              <FaShoppingCart /> Заказы
+            </button>
+            <button className={`sidebar-link ${activeSection === 'portfolio' ? 'active' : ''}`} onClick={() => { setActiveSection('portfolio'); setSidebarOpen(false); }}>
+              <FaImages /> Портфолио
+            </button>
+            <button className={`sidebar-link ${activeSection === 'reviews' ? 'active' : ''}`} onClick={() => { setActiveSection('reviews'); setSidebarOpen(false); }}>
+              <FaStar /> Отзывы
+            </button>
+            <button className={`sidebar-link ${activeSection === 'cooperation' ? 'active' : ''}`} onClick={() => { setActiveSection('cooperation'); setSidebarOpen(false); }}>
+              <FaHandshake /> Сотрудничество
+            </button>
+            <button className={`sidebar-link ${activeSection === 'banners' ? 'active' : ''}`} onClick={() => { setActiveSection('banners'); setSidebarOpen(false); }}>
+              <FaFilePdf /> Баннеры
+            </button>
+            <button className={`sidebar-link ${activeSection === 'smtp' ? 'active' : ''}`} onClick={() => { setActiveSection('smtp'); setSidebarOpen(false); }}>
+              <FaEnvelope /> SMTP / Email
+            </button>
+            <button className={`sidebar-link ${activeSection === 'languages' ? 'active' : ''}`} onClick={() => { setActiveSection('languages'); setSidebarOpen(false); }}>
+              <FaGlobe /> Языки
+            </button>
+            <button className={`sidebar-link ${activeSection === 'colors' ? 'active' : ''}`} onClick={() => { setActiveSection('colors'); setSidebarOpen(false); }}>
+              <FaPalette /> Цвета
+            </button>
+            <button className={`sidebar-link ${activeSection === 'reports' ? 'active' : ''}`} onClick={() => { setActiveSection('reports'); setSidebarOpen(false); }}>
+              <FaChartBar /> Отчеты
+            </button>
+            <button className={`sidebar-link ${activeSection === 'logs' ? 'active' : ''}`} onClick={() => { setActiveSection('logs'); fetchLogs(); setSidebarOpen(false); }}>
+              <FaList /> Логи
+            </button>
+
+          </nav>
+          <button className="sidebar-logout" onClick={handleLogout}>
+            <FaSignOutAlt /> Выйти
+          </button>
+        </aside>
+
+        {/* Main content */}
+        <main className="admin-main">
+          {/* Dashboard section */}
+          {activeSection === 'dashboard' && (
+            <section>
+              <div className="admin-header">
+                <h1>📊 Дашборд</h1>
+              </div>
+
+              <div className="dashboard-stats">
+                <div className="dash-card" onClick={() => setActiveSection('products')}>
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}><FaBoxes /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{reports.totalProducts}</div>
+                    <div className="dash-card-label">Продуктов</div>
+                  </div>
+                </div>
+                <div className="dash-card" onClick={() => setActiveSection('orders')}>
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #f093fb, #f5576c)' }}><FaShoppingCart /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{reports.totalOrders}</div>
+                    <div className="dash-card-label">Заказов</div>
+                  </div>
+                </div>
+                <div className="dash-card">
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #4facfe, #00f2fe)' }}><FaChartBar /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{reports.totalRevenue.toLocaleString()} TMT</div>
+                    <div className="dash-card-label">Выручка</div>
+                  </div>
+                </div>
+                <div className="dash-card" onClick={() => setActiveSection('orders')}>
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #43e97b, #38f9d7)' }}><FaHandshake /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{reports.pendingOrders}</div>
+                    <div className="dash-card-label">Ожидают</div>
+                  </div>
+                </div>
+                <div className="dash-card" onClick={() => setActiveSection('portfolio')}>
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #fa709a, #fee140)' }}><FaImages /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{portfolioItems.length}</div>
+                    <div className="dash-card-label">Портфолио</div>
+                  </div>
+                </div>
+                <div className="dash-card" onClick={() => setActiveSection('reviews')}>
+                  <div className="dash-card-icon" style={{ background: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' }}><FaStar /></div>
+                  <div className="dash-card-info">
+                    <div className="dash-card-value">{adminReviews.filter(r => r.is_approved).length} / {adminReviews.length}</div>
+                    <div className="dash-card-label">Отзывы (одобр./всего)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick actions */}
+              <div className="dashboard-section">
+                <h2>Быстрые действия</h2>
+                <div className="quick-actions">
+                  <button className="quick-action-btn" onClick={() => { setActiveSection('products'); openNewProductModal(); }}>
+                    <FaPlus /> Новый продукт
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveSection('orders')}>
+                    <FaShoppingCart /> Заказы ({reports.pendingOrders} новых)
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveSection('reviews')}>
+                    <FaStar /> Модерация отзывов ({adminReviews.filter(r => !r.is_approved).length})
+                  </button>
+                  <button className="quick-action-btn" onClick={() => setActiveSection('banners')}>
+                    <FaFilePdf /> Управление баннерами
+                  </button>
+                </div>
+              </div>
+
+              {/* Recent orders */}
+              {orders.length > 0 && (
+                <div className="dashboard-section">
+                  <h2>Последние заказы</h2>
+                  <div className="products-table-container">
+                    <table className="products-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Клиент</th>
+                          <th>Телефон</th>
+                          <th>Статус</th>
+                          <th>Дата</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.slice(0, 5).map(order => (
+                          <tr key={order.id}>
+                            <td>#{order.id}</td>
+                            <td>{order.customer_name}</td>
+                            <td>{order.customer_phone}</td>
+                            <td>
+                              <span className={`status-badge status-${order.status}`}>
+                                {order.status === 'pending' ? '⏳ Новый' : order.status === 'completed' ? '✅ Выполнен' : order.status}
+                              </span>
+                            </td>
+                            <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+          {activeSection === 'pdfcatalog' && (
+            <section className="catalog-admin-section">
+              <div className="admin-header">
+                <h1>📄 PDF Каталог</h1>
+              </div>
+
+              {/* Загрузка нового каталога */}
+              <div className="catalog-upload-card">
+                <div className="upload-icon">
+                  <FaFilePdf />
+                </div>
+                <h3>Загрузить новый каталог</h3>
+                <p>Выберите PDF файл для замены текущего каталога</p>
+                <div className="upload-controls">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    id="catalog-upload-input"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      console.log('Selected file:', file);
+                      catalogFileRef.current = file;
+                      setSelectedFileName(file ? file.name : '');
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  <label htmlFor="catalog-upload-input" className="file-select-btn">
+                    {selectedFileName ? '📄 ' + selectedFileName : '📎 Выбрать файл'}
+                  </label>
+                  <button
+                    className="upload-btn"
+                    onClick={() => {
+                      if (!catalogFileRef.current) {
+                        alert('Пожалуйста, выберите файл!');
+                        return;
+                      }
+                      handleCatalogUpload();
+                    }}
+                  >
+                    ⬆️ Загрузить
+                  </button>
+                </div>
+                {selectedFileName && (
+                  <p style={{ marginTop: '10px', opacity: 0.8 }}>✅ Файл выбран: {selectedFileName}</p>
+                )}
+              </div>
+
+              {/* Текущий каталог */}
+              <div className="current-catalog-card">
+                <h3>📌 Текущий каталог</h3>
+                {catalogs.length > 0 ? (
+                  catalogs.map(cat => (
+                    <div key={cat.id} className="catalog-item">
+                      <div className="catalog-info">
+                        <FaFilePdf className="pdf-icon" />
+                        <div>
+                          <span className="catalog-name">{cat.file_name || 'Каталог ZOK'}</span>
+                          <span className="catalog-date">
+                            {new Date(cat.created_at).toLocaleDateString('ru-RU')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="catalog-actions">
+                        <a
+                          href={cat.file_url.startsWith('http') ? cat.file_url : `http://localhost:5001${cat.file_url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="view-btn"
+                        >
+                          👁️ Просмотр
+                        </a>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDeleteCatalog(cat.id)}
+                        >
+                          🗑️ Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-catalog">
+                    <p>Каталог ещё не загружен</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+
+          {/* Portfolio section */}
+          {activeSection === 'portfolio' && (
+            <section>
+              <div className="admin-header">
+                <h1>🖼️ Портфолио</h1>
+                <button className="add-product-button" onClick={() => { resetPortfolioForm(); setShowPortfolioModal(true); }}>
+                  <FaPlus /> Добавить проект
+                </button>
+              </div>
+              {portfolioItems.length === 0 ? (
+                <div className="empty-state">
+                  <FaImages style={{ fontSize: '3rem', opacity: 0.3 }} />
+                  <p>Нет проектов. Нажмите «Добавить проект» чтобы начать.</p>
+                </div>
+              ) : (
+                <div className="products-table-container">
+                  <table className="products-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Изображение</th>
+                        <th>Название</th>
+                        <th>Материалы</th>
+                        <th>Порядок</th>
+                        <th>Активно</th>
+                        <th>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {portfolioItems.map(item => (
+                        <tr key={item.id}>
+                          <td>{item.id}</td>
+                          <td>{item.image_url && <img src={getImageUrl(item.image_url)} alt="" className="table-image" />}</td>
+                          <td>{item.title_ru || item.title_en || '-'}</td>
+                          <td>{item.materials_used || '-'}</td>
+                          <td>{item.sort_order}</td>
+                          <td>{item.is_active ? '✅' : '❌'}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="edit-button" onClick={() => handleEditPortfolio(item)}><FaEdit /></button>
+                              <button className="delete-button" onClick={() => handleDeletePortfolio(item.id)}><FaTrash /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Portfolio Modal */}
+              {showPortfolioModal && (
+                <div className="modal-overlay" onClick={() => setShowPortfolioModal(false)}>
+                  <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h2>{editingPortfolio ? '✈️ Редактировать' : '➕ Новый проект'}</h2>
+                      <button className="modal-close" onClick={() => setShowPortfolioModal(false)}><FaTimes /></button>
+                    </div>
+                    <form onSubmit={handlePortfolioSubmit}>
+                      <div className="form-row three-cols">
+                        <div className="form-group">
+                          <label>Название (TM)</label>
+                          <input type="text" name="title_tm" value={portfolioForm.title_tm} onChange={handlePortfolioChange} />
+                        </div>
+                        <div className="form-group">
+                          <label>Название (RU) *</label>
+                          <input type="text" name="title_ru" value={portfolioForm.title_ru} onChange={handlePortfolioChange} required />
+                        </div>
+                        <div className="form-group">
+                          <label>Название (EN)</label>
+                          <input type="text" name="title_en" value={portfolioForm.title_en} onChange={handlePortfolioChange} />
+                        </div>
+                      </div>
+
+                      <div className="form-row three-cols">
+                        <div className="form-group">
+                          <label>Описание (TM)</label>
+                          <textarea name="description_tm" value={portfolioForm.description_tm} onChange={handlePortfolioChange} rows="3" />
+                        </div>
+                        <div className="form-group">
+                          <label>Описание (RU)</label>
+                          <textarea name="description_ru" value={portfolioForm.description_ru} onChange={handlePortfolioChange} rows="3" />
+                        </div>
+                        <div className="form-group">
+                          <label>Описание (EN)</label>
+                          <textarea name="description_en" value={portfolioForm.description_en} onChange={handlePortfolioChange} rows="3" />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label>Фото проекта</label>
+                        <FileUploader type="portfolio" label="📷 Загрузить фото" onUpload={(url) => setPortfolioForm(prev => ({ ...prev, image_url: url }))} />
+                        <input type="text" name="image_url" value={portfolioForm.image_url} onChange={handlePortfolioChange} placeholder="URL или загрузите выше" />
+                        {portfolioForm.image_url && (
+                          <img src={getImageUrl(portfolioForm.image_url)} alt="preview" style={{ marginTop: '0.5rem', maxHeight: 120, borderRadius: 8, objectFit: 'cover' }} />
+                        )}
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Материалы</label>
+                          <input type="text" name="materials_used" value={portfolioForm.materials_used} onChange={handlePortfolioChange} placeholder="Краска, грунтовка, шпатлёвка..." />
+                        </div>
+                        <div className="form-group">
+                          <label>Порядок сортировки</label>
+                          <input type="number" name="sort_order" value={portfolioForm.sort_order} onChange={handlePortfolioChange} />
+                        </div>
+                      </div>
+
+                      <div className="form-group checkbox-group">
+                        <label>
+                          <input type="checkbox" name="is_active" checked={portfolioForm.is_active} onChange={handlePortfolioChange} />
+                          Активно (показывать на сайте)
+                        </label>
+                      </div>
+
+                      <div className="modal-actions">
+                        <button type="button" className="cancel-button" onClick={() => setShowPortfolioModal(false)}>Отмена</button>
+                        <button type="submit" className="save-button">{editingPortfolio ? 'Сохранить' : 'Добавить'}</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Reviews section */}
+          {activeSection === 'reviews' && (
+            <section>
+              <div className="admin-header">
+                <h1>⭐ Модерация отзывов</h1>
+              </div>
+              {reviewsError && (
+                <div className="error-state" style={{ padding: '2rem', background: '#fee', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ color: '#c00', fontWeight: 'bold' }}>❌ Ошибка: {reviewsError}</p>
+                  <p style={{ fontSize: '0.9rem', color: '#666' }}>Проверьте консоль браузера (F12) для деталей</p>
+                </div>
+              )}
+              {adminReviews.length === 0 && !reviewsError ? (
+                <div className="empty-state">
+                  <FaStar style={{ fontSize: '3rem', opacity: 0.3 }} />
+                  <p>Нет отзывов для модерации</p>
+                </div>
+              ) : (
+                <div className="reviews-moderation">
+                  {adminReviews.map(review => (
+                    <div key={review.id} className={`review-mod-card ${review.is_approved ? 'approved' : 'pending'}`}>
+                      <div className="review-mod-header">
+                        <div>
+                          <strong>{review.author_name}</strong>
+                          <span className="review-mod-date">{new Date(review.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <span className={`status-badge status-${review.is_approved ? 'completed' : 'pending'}`}>
+                          {review.is_approved ? '✅ Одобрен' : '⏳ На модерации'}
+                        </span>
+                      </div>
+                      <div className="review-mod-rating">
+                        {'⭐'.repeat(review.rating || 5)}
+                      </div>
+                      <p className="review-mod-text">{review.text_content}</p>
+                      <div className="review-mod-actions">
+                        {!review.is_approved && (
+                          <button className="approve-btn" onClick={() => handleApproveReview(review.id, true)}>
+                            <FaCheck /> Одобрить
+                          </button>
+                        )}
+                        {review.is_approved && (
+                          <button className="reject-btn" onClick={() => handleApproveReview(review.id, false)}>
+                            <FaTimes /> Отклонить
+                          </button>
+                        )}
+                        <button className="delete-button" onClick={() => handleDeleteReview(review.id)}>
+                          <FaTrash /> Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Cooperation section */}
+          {activeSection === 'cooperation' && (
+            <section>
+              <div className="admin-header">
+                <h1>🤝 Заявки на сотрудничество</h1>
+              </div>
+              {cooperationItems.length === 0 ? (
+                <div className="empty-state">
+                  <FaHandshake style={{ fontSize: '3rem', opacity: 0.3 }} />
+                  <p>Нет заявок на сотрудничество</p>
+                </div>
+              ) : (
+                <div className="cooperation-list">
+                  {cooperationItems.map(item => (
+                    <div key={item.id} className="cooperation-card">
+                      <div className="cooperation-header">
+                        <strong>{item.name || 'Без названия'}</strong>
+                        <span className={`status-badge status-${item.status}`}>
+                          {item.status === 'new' ? 'Новый' : item.status === 'contacted' ? 'Связались' : item.status === 'completed' ? 'Завершено' : item.status === 'rejected' ? 'Отклонено' : item.status}
+                        </span>
+                      </div>
+                      <div className="cooperation-info">
+                        <p><strong>Телефон:</strong> {item.phone}</p>
+                        <p><strong>Тип партнёра:</strong> {item.partner_type === 'shop' ? 'Магазин' : item.partner_type === 'master' ? 'Мастер' : item.partner_type === 'designer' ? 'Дизайнер' : item.partner_type}</p>
+                        <p><strong>Дата:</strong> {new Date(item.created_at).toLocaleDateString()}</p>
+                      </div>
+                      {item.notes && (
+                        <div className="cooperation-message">
+                          <p><strong>Заметки:</strong></p>
+                          <p>{item.notes}</p>
+                        </div>
+                      )}
+                      <div className="cooperation-actions">
+                        <select
+                          value={item.status}
+                          onChange={(e) => handleUpdateCooperationStatus(item.id, e.target.value)}
+                          className="status-select"
+                        >
+                          <option value="new">Новый</option>
+                          <option value="contacted">Связались</option>
+                          <option value="completed">Завершено</option>
+                          <option value="rejected">Отклонено</option>
+                        </select>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDeleteCooperation(item.id)}
+                          title="Удалить"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Products section */}
+          {activeSection === 'products' && (
+            <section>
+              <div className="admin-header">
+                <h1>Продукты</h1>
+                <button
+                  className="add-product-button"
+                  onClick={openNewProductModal}
+                >
+                  <FaPlus /> Добавить продукт
+                </button>
+              </div>
+
+              <div className="products-table-container">
+                <table className="products-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Изображение</th>
+                      <th>Название</th>
+                      <th>Категория</th>
+                      <th>Цена</th>
+                      <th>В наличии</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product) => (
+                      <tr key={product.id}>
+                        <td>{product.id}</td>
+                        <td>
+                          {product.image_url && (
+                            <img
+                              src={getImageUrl(product.image_url)}
+                              alt={product.name_ru}
+                              className="table-image"
+                            />
+                          )}
+                        </td>
+                        <td>{product.name_ru}</td>
+                        <td>{product.category_name || '-'}</td>
+                        <td>{product.price ? `${product.price} TMT` : '-'}</td>
+                        <td>{product.in_stock ? 'Да' : 'Нет'}</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="edit-button"
+                              onClick={() => handleEdit(product)}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="delete-button"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* Categories section */}
+          {activeSection === 'categories' && (
+            <section>
+              <div className="admin-header">
+                <h1>Категории</h1>
+                <button
+                  className="add-product-button"
+                  onClick={openNewCategoryModal}
+                >
+                  <FaPlus /> Добавить категорию
+                </button>
+              </div>
+
+              <div className="products-table-container">
+                <table className="products-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Название (TM)</th>
+                      <th>Название (RU)</th>
+                      <th>Название (EN)</th>
+                      <th>Описание</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((cat) => (
+                      <tr key={cat.id}>
+                        <td>{cat.id}</td>
+                        <td>{cat.name_tm || cat.name}</td>
+                        <td>{cat.name_ru}</td>
+                        <td>{cat.name_en || cat.name}</td>
+                        <td>{cat.description || '-'}</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="edit-button"
+                              onClick={() => handleCategoryEdit(cat)}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="delete-button"
+                              onClick={() => handleCategoryDelete(cat.id)}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* Orders section */}
+          {activeSection === 'orders' && (
+            <section>
+              <div className="admin-header">
+                <h1>Заказы</h1>
+              </div>
+              <div className="products-table-container">
+                <table className="products-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Дата</th>
+                      <th>Продукт</th>
+                      <th>Клиент</th>
+                      <th>Телефон</th>
+                      <th>Email</th>
+                      <th>Детали заказа</th>
+                      <th>Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="empty-state">
+                          Заказов пока нет
+                        </td>
+                      </tr>
+                    ) : (
+                      orders.map((order) => (
+                        <tr key={order.id}>
+                          <td>{order.id}</td>
+                          <td>{new Date(order.created_at).toLocaleString()}</td>
+                          <td>{order.product_name || '-'}</td>
+                          <td>{order.customer_name}</td>
+                          <td>{order.customer_phone}</td>
+                          <td>{order.customer_email || '-'}</td>
+                          <td>
+                            {order.customer_address && (
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <strong>Адрес:</strong> {order.customer_address}
+                              </div>
+                            )}
+                            {order.quantity && (
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <strong>Кол-во:</strong> {order.quantity}
+                              </div>
+                            )}
+                            {order.notes && (
+                              <div>
+                                <strong>Комментарий:</strong> {order.notes}
+                              </div>
+                            )}
+                            {order.total_price && (
+                              <div style={{ marginTop: '0.5rem', fontWeight: 'bold', color: '#667eea' }}>
+                                <strong>Сумма:</strong> {order.total_price} TMT
+                              </div>
+                            )}
+                            {!order.customer_address && !order.notes && !order.quantity && '-'}
+                          </td>
+                          <td>
+                            <select
+                              className="status-select"
+                              value={order.status}
+                              onChange={(e) =>
+                                handleOrderStatusChange(order.id, e.target.value)
+                              }
+                            >
+                              <option value="pending">Ожидает</option>
+                              <option value="processing">В обработке</option>
+                              <option value="completed">Завершен</option>
+                              <option value="cancelled">Отменен</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* SMTP section */}
+          {activeSection === 'smtp' && (
+            <section>
+              <div className="admin-header">
+                <h1>Настройки SMTP / Email</h1>
+              </div>
+              <div className="smtp-form-container">
+                <form onSubmit={handleSmtpSubmit}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>SMTP Host</label>
+                      <input
+                        type="text"
+                        name="host"
+                        value={smtpSettings.host}
+                        onChange={handleSmtpChange}
+                        placeholder="smtp.example.com"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Port</label>
+                      <input
+                        type="number"
+                        name="port"
+                        value={smtpSettings.port}
+                        onChange={handleSmtpChange}
+                      />
+                    </div>
+                    <div className="form-group checkbox-group">
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="secure"
+                          checked={smtpSettings.secure}
+                          onChange={handleSmtpChange}
+                        />
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Пользователь</label>
+                      <input
+                        type="text"
+                        name="user"
+                        value={smtpSettings.user}
+                        onChange={handleSmtpChange}
+                        placeholder="user@example.com"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Пароль</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={smtpSettings.password}
+                        onChange={handleSmtpChange}
+                        placeholder="Оставьте пустым, чтобы не менять"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>От кого (email)</label>
+                      <input
+                        type="email"
+                        name="from_email"
+                        value={smtpSettings.from_email}
+                        onChange={handleSmtpChange}
+                        placeholder="no-reply@zok-decor.com"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>От кого (имя)</label>
+                      <input
+                        type="text"
+                        name="from_name"
+                        value={smtpSettings.from_name}
+                        onChange={handleSmtpChange}
+                        placeholder="ZOK Decor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modal-actions">
+                    <button type="button" className="test-button" onClick={testSmtp}>
+                      Тест отправки
+                    </button>
+                    <button type="submit" className="save-button">
+                      Сохранить настройки
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </section>
+          )}
+
+          {/* Colors section */}
+          {activeSection === 'colors' && (
+            <section>
+              <div className="admin-header">
+                <h1>Управление цветами сайта</h1>
+              </div>
+              <div className="smtp-form-container">
+                <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'rgba(77, 65, 37, 0.05)', borderRadius: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                    Выберите тему для редактирования:
+                  </label>
+                  <select
+                    value={colorTheme}
+                    onChange={(e) => setColorTheme(e.target.value)}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      fontSize: '1rem',
+                      borderRadius: '8px',
+                      border: '2px solid rgba(77, 65, 37, 0.3)',
+                      background: 'white',
+                      cursor: 'pointer',
+                      minWidth: '250px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <option value="light">🌞 Светлая тема</option>
+                    <option value="dark">🌙 Темная тема</option>
+                  </select>
+                  <p style={{ marginTop: '1rem', fontSize: '0.95rem', opacity: 0.7, lineHeight: '1.6' }}>
+                    Вы можете настроить разные цвета для светлой и темной темы.
+                    Изменения будут применяться автоматически при переключении темы на сайте.
+                  </p>
+                </div>
+                <form onSubmit={handleColorSubmit}>
+                  <h3 style={{ marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Основные цвета</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Основной цвет (Primary)</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="primary"
+                          value={colorForm.primary}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="primary"
+                          value={colorForm.primary}
+                          onChange={handleColorChange}
+                          placeholder="#4d4125"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Вторичный цвет (Secondary)</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="secondary"
+                          value={colorForm.secondary}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="secondary"
+                          value={colorForm.secondary}
+                          onChange={handleColorChange}
+                          placeholder="#ccc180"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Текст</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Цвет текста</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="text"
+                          value={colorForm.text}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="text"
+                          value={colorForm.text}
+                          onChange={handleColorChange}
+                          placeholder="#333333"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Цвет светлого текста</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="text_light"
+                          value={colorForm.text_light}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="text_light"
+                          value={colorForm.text_light}
+                          onChange={handleColorChange}
+                          placeholder="#666666"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Хедер</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Фон хедера</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="header_bg"
+                          value={colorForm.header_bg}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="header_bg"
+                          value={colorForm.header_bg}
+                          onChange={handleColorChange}
+                          placeholder="#ffffff"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Текст хедера</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="header_text"
+                          value={colorForm.header_text}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="header_text"
+                          value={colorForm.header_text}
+                          onChange={handleColorChange}
+                          placeholder="#333333"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Футер</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Фон футера</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="footer_bg"
+                          value={colorForm.footer_bg}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="footer_bg"
+                          value={colorForm.footer_bg}
+                          onChange={handleColorChange}
+                          placeholder="#4d4125"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Текст футера</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="footer_text"
+                          value={colorForm.footer_text}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="footer_text"
+                          value={colorForm.footer_text}
+                          onChange={handleColorChange}
+                          placeholder="#ffffff"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Кнопки</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Фон кнопок</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="button_bg"
+                          value={colorForm.button_bg}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="button_bg"
+                          value={colorForm.button_bg}
+                          onChange={handleColorChange}
+                          placeholder="#ccc180"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Текст кнопок</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="button_text"
+                          value={colorForm.button_text}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="button_text"
+                          value={colorForm.button_text}
+                          onChange={handleColorChange}
+                          placeholder="#ffffff"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Кнопки при наведении</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="button_hover"
+                          value={colorForm.button_hover}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="button_hover"
+                          value={colorForm.button_hover}
+                          onChange={handleColorChange}
+                          placeholder="#b8a870"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Ссылки</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Цвет ссылок</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="link"
+                          value={colorForm.link}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="link"
+                          value={colorForm.link}
+                          onChange={handleColorChange}
+                          placeholder="#4d4125"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Ссылки при наведении</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="link_hover"
+                          value={colorForm.link_hover}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="link_hover"
+                          value={colorForm.link_hover}
+                          onChange={handleColorChange}
+                          placeholder="#ccc180"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 style={{ marginTop: '2rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>Дополнительно</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Фон страницы</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="background"
+                          value={colorForm.background}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="background"
+                          value={colorForm.background}
+                          onChange={handleColorChange}
+                          placeholder="#ffffff"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Цвет границ</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="border"
+                          value={colorForm.border}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="border"
+                          value={colorForm.border}
+                          onChange={handleColorChange}
+                          placeholder="#e0e0e0"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Фон карточек</label>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          name="card_bg"
+                          value={colorForm.card_bg}
+                          onChange={handleColorChange}
+                          style={{ width: '80px', height: '50px', cursor: 'pointer' }}
+                        />
+                        <input
+                          type="text"
+                          name="card_bg"
+                          value={colorForm.card_bg}
+                          onChange={handleColorChange}
+                          placeholder="#ffffff"
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-actions">
+                    <button type="submit" className="save-button">
+                      Сохранить цвета
+                    </button>
+                  </div>
+                </form>
+                <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(77, 65, 37, 0.05)', borderRadius: '10px' }}>
+                  <h3 style={{ marginBottom: '1rem' }}>Предпросмотр</h3>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', flexDirection: 'column' }}>
+                    <div style={{
+                      padding: '1rem 2rem',
+                      background: `linear-gradient(135deg, ${colorForm.primary} 0%, ${colorForm.secondary} 100%)`,
+                      color: colorForm.button_text,
+                      borderRadius: '10px',
+                      fontWeight: 'bold',
+                      display: 'inline-block',
+                      width: 'fit-content'
+                    }}>
+                      Пример кнопки
+                    </div>
+                    <div style={{
+                      padding: '1rem 2rem',
+                      border: `2px solid ${colorForm.border}`,
+                      color: colorForm.text,
+                      borderRadius: '10px',
+                      fontWeight: 'bold',
+                      background: colorForm.card_bg,
+                      display: 'inline-block',
+                      width: 'fit-content'
+                    }}>
+                      Пример карточки
+                    </div>
+                    <div style={{
+                      padding: '1rem 2rem',
+                      background: colorForm.header_bg,
+                      color: colorForm.header_text,
+                      borderRadius: '10px',
+                      fontWeight: 'bold',
+                      display: 'inline-block',
+                      width: 'fit-content'
+                    }}>
+                      Пример хедера
+                    </div>
+                    <div style={{
+                      padding: '1rem 2rem',
+                      background: colorForm.footer_bg,
+                      color: colorForm.footer_text,
+                      borderRadius: '10px',
+                      fontWeight: 'bold',
+                      display: 'inline-block',
+                      width: 'fit-content'
+                    }}>
+                      Пример футера
+                    </div>
+                    <div style={{
+                      padding: '1rem 2rem',
+                      color: colorForm.link,
+                      fontWeight: 'bold',
+                      fontSize: '1.2rem',
+                      textDecoration: 'underline',
+                      display: 'inline-block',
+                      width: 'fit-content'
+                    }}>
+                      Пример ссылки
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Banners section */}
+          {activeSection === 'banners' && (
+            <section>
+              <div className="admin-header">
+                <h1>Баннеры на главной странице</h1>
+                <button
+                  className="add-product-button"
+                  onClick={() => {
+                    resetBannerForm();
+                    setShowBannerModal(true);
+                  }}
+                >
+                  <FaPlus /> Добавить баннер
+                </button>
+              </div>
+
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Изображение</th>
+                      <th>Заголовок (RU)</th>
+                      <th>Ссылка</th>
+                      <th>Порядок</th>
+                      <th>Активен</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {banners.length > 0 ? (
+                      banners.map((banner) => (
+                        <tr key={banner.id}>
+                          <td>
+                            {banner.image_url && (
+                              <img
+                                src={getImageUrl(banner.image_url)}
+                                alt={banner.title_ru}
+                                style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '5px' }}
+                              />
+                            )}
+                          </td>
+                          <td>{banner.title_ru || '-'}</td>
+                          <td>{banner.link || '-'}</td>
+                          <td>{banner.sort_order}</td>
+                          <td>{banner.is_active ? 'Да' : 'Нет'}</td>
+                          <td>
+                            <button
+                              className="edit-button"
+                              onClick={() => handleEditBanner(banner)}
+                            >
+                              <FaEdit /> Редактировать
+                            </button>
+                            <button
+                              className="delete-button"
+                              onClick={() => handleDeleteBanner(banner.id)}
+                            >
+                              <FaTrash /> Удалить
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6">Нет баннеров</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Banner Modal */}
+              {showBannerModal && (
+                <div className="modal-overlay" onClick={() => setShowBannerModal(false)}>
+                  <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                      <h2>{editingBanner ? 'Редактировать баннер' : 'Добавить баннер'}</h2>
+                      <button className="modal-close" onClick={() => setShowBannerModal(false)}>
+                        <FaTimes />
+                      </button>
+                    </div>
+                    <form onSubmit={handleBannerSubmit}>
+                      <div className="form-group">
+                        <label>URL изображения *</label>
+                        <FileUploader type="banners" label="📷 Загрузить баннер" onUpload={(url) => setBannerForm({ ...bannerForm, image_url: url })} />
+                        <input
+                          type="text"
+                          name="image_url"
+                          value={bannerForm.image_url}
+                          onChange={(e) => setBannerForm({ ...bannerForm, image_url: e.target.value })}
+                          required
+                          placeholder="URL или загрузите файл выше"
+                        />
+                      </div>
+                      <div className="form-row three-cols">
+                        <div className="form-group">
+                          <label>Заголовок (TM)</label>
+                          <input
+                            type="text"
+                            name="title_tm"
+                            value={bannerForm.title_tm}
+                            onChange={(e) => setBannerForm({ ...bannerForm, title_tm: e.target.value })}
+                            placeholder="Türkmen dilinde"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Заголовок (RU)</label>
+                          <input
+                            type="text"
+                            name="title_ru"
+                            value={bannerForm.title_ru}
+                            onChange={(e) => setBannerForm({ ...bannerForm, title_ru: e.target.value })}
+                            placeholder="На русском"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Заголовок (EN)</label>
+                          <input
+                            type="text"
+                            name="title_en"
+                            value={bannerForm.title_en}
+                            onChange={(e) => setBannerForm({ ...bannerForm, title_en: e.target.value })}
+                            placeholder="In English"
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Ссылка</label>
+                        <input
+                          type="text"
+                          name="link"
+                          value={bannerForm.link}
+                          onChange={(e) => setBannerForm({ ...bannerForm, link: e.target.value })}
+                          placeholder="/products или https://..."
+                        />
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Порядок сортировки</label>
+                          <input
+                            type="number"
+                            name="sort_order"
+                            value={bannerForm.sort_order}
+                            onChange={(e) => setBannerForm({ ...bannerForm, sort_order: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="form-group checkbox-group">
+                          <label>
+                            <input
+                              type="checkbox"
+                              name="is_active"
+                              checked={bannerForm.is_active}
+                              onChange={(e) => setBannerForm({ ...bannerForm, is_active: e.target.checked })}
+                            />
+                            Активен
+                          </label>
+                        </div>
+                      </div>
+                      <div className="modal-actions">
+                        <button type="button" className="cancel-button" onClick={() => setShowBannerModal(false)}>
+                          Отмена
+                        </button>
+                        <button type="submit" className="save-button">
+                          Сохранить
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Reports section */}
+          {activeSection === 'reports' && (
+            <section>
+              <div className="admin-header">
+                <h1>Отчеты и статистика</h1>
+              </div>
+
+              <div className="reports-grid">
+                <div className="report-card">
+                  <h3>Всего продуктов</h3>
+                  <div className="value">{reports.totalProducts}</div>
+                  <div className="label">в каталоге</div>
+                </div>
+
+                <div className="report-card">
+                  <h3>Всего заказов</h3>
+                  <div className="value">{reports.totalOrders}</div>
+                  <div className="label">за все время</div>
+                </div>
+
+                <div className="report-card">
+                  <h3>Общая выручка</h3>
+                  <div className="value">{reports.totalRevenue.toLocaleString()} TMT</div>
+                  <div className="label">сумма всех заказов</div>
+                </div>
+
+                <div className="report-card">
+                  <h3>Ожидают обработки</h3>
+                  <div className="value">{reports.pendingOrders}</div>
+                  <div className="label">новых заказов</div>
+                </div>
+
+                <div className="report-card">
+                  <h3>Завершено</h3>
+                  <div className="value">{reports.completedOrders}</div>
+                  <div className="label">выполненных заказов</div>
+                </div>
+
+                <div className="report-card">
+                  <h3>Категорий</h3>
+                  <div className="value">{categories.length}</div>
+                  <div className="label">активных категорий</div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeSection === 'languages' && (
+            <section>
+              <div className="admin-header">
+                <h1>Языки интерфейса</h1>
+              </div>
+              <div className="languages-container">
+                <div className="languages-list">
+                  <h3>Доступные языки</h3>
+                  <table className="products-table">
+                    <thead>
+                      <tr>
+                        <th>Код</th>
+                        <th>Название</th>
+                        <th>Флаг</th>
+                        <th>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {languages.map((lang) => (
+                        <tr key={lang.code}>
+                          <td>{lang.code}</td>
+                          <td>{lang.name}</td>
+                          <td>{lang.flag}</td>
+                          <td>
+                            {(lang.code === 'ru' || lang.code === 'en') ? (
+                              <span>Системный</span>
+                            ) : (
+                              <button
+                                className="delete-button"
+                                type="button"
+                                onClick={() => handleRemoveLanguage(lang.code)}
+                              >
+                                <FaTrash />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="languages-form">
+                  <h3>Добавить язык</h3>
+                  <form onSubmit={handleAddLanguage}>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Код языка</label>
+                        <input
+                          type="text"
+                          name="code"
+                          value={languageForm.code}
+                          onChange={handleLanguageChange}
+                          placeholder="например: tr, uz"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Название</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={languageForm.name}
+                          onChange={handleLanguageChange}
+                          placeholder="Türkçe, Oʻzbekcha"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Флаг (emoji)</label>
+                        <input
+                          type="text"
+                          name="flag"
+                          value={languageForm.flag}
+                          onChange={handleLanguageChange}
+                          placeholder="🇹🇷"
+                        />
+                      </div>
+                    </div>
+                    <div className="modal-actions">
+                      <button type="submit" className="save-button">
+                        Добавить язык
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </section>
+          )}
+          {/* Logs section */}
+          {activeSection === 'logs' && (
+            <section>
+              <div className="admin-header">
+                <h1>📝 Логи системы</h1>
+              </div>
+
+              <div className="log-tabs">
+                <button className={`log-tab ${logTab === 'errors' ? 'active' : ''}`} onClick={() => setLogTab('errors')}>
+                  ⚠️ Ошибки ({errorLogs.length})
+                </button>
+                <button className={`log-tab ${logTab === 'actions' ? 'active' : ''}`} onClick={() => setLogTab('actions')}>
+                  📊 Действия ({actionLogs.length})
+                </button>
+                <button className="log-tab refresh" onClick={fetchLogs}>
+                  🔄 Обновить
+                </button>
+                <button className="log-tab clear" onClick={() => clearLogs(logTab)}>
+                  🗑️ Очистить
+                </button>
+              </div>
+
+              <div className="logs-list">
+                {(logTab === 'errors' ? errorLogs : actionLogs).length === 0 ? (
+                  <div className="empty-state">
+                    <p>🌟 Логи пусты — всё работает отлично!</p>
+                  </div>
+                ) : (
+                  (logTab === 'errors' ? errorLogs : actionLogs).map((log, i) => (
+                    <div key={i} className={`log-card log-${(log.level || 'info').toLowerCase()}`}>
+                      <div className="log-header">
+                        <span className={`log-level level-${(log.level || 'info').toLowerCase()}`}>
+                          {log.level || 'INFO'}
+                        </span>
+                        <span className="log-time">{log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</span>
+                      </div>
+                      <div className="log-message">{log.message}</div>
+                      {log.details && (
+                        <details className="log-details">
+                          <summary>Подробности</summary>
+                          <pre>{typeof log.details === 'string' ? log.details : JSON.stringify(log.details, null, 2)}</pre>
+                        </details>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
+
+        </main>
+      </div>
+
+      {/* Product modal */}
+      {showProductModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowProductModal(false);
+            resetProductForm();
+          }}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingProduct ? 'Редактировать продукт' : 'Добавить продукт'}</h2>
+            <form onSubmit={handleProductSubmit}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Категория</label>
+                  <select
+                    name="category_id"
+                    value={productForm.category_id}
+                    onChange={handleProductChange}
+                    required
+                  >
+                    <option value="">Выберите категорию</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name_ru}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-row three-cols">
+                <div className="form-group">
+                  <label>Название (TM) 🇹🇲</label>
+                  <input
+                    type="text"
+                    name="name_tm"
+                    value={productForm.name_tm}
+                    onChange={handleProductChange}
+                    placeholder="Türkmen dilinde"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Название (RU) 🇷🇺 *</label>
+                  <input
+                    type="text"
+                    name="name_ru"
+                    value={productForm.name_ru}
+                    onChange={handleProductChange}
+                    required
+                    placeholder="На русском"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Название (EN) 🇬🇧</label>
+                  <input
+                    type="text"
+                    name="name_en"
+                    value={productForm.name_en}
+                    onChange={handleProductChange}
+                    placeholder="In English"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row three-cols">
+                <div className="form-group">
+                  <label>Описание (TM) 🇹🇲</label>
+                  <textarea
+                    name="description_tm"
+                    value={productForm.description_tm}
+                    onChange={handleProductChange}
+                    rows="3"
+                    placeholder="Düşündiriş türkmen dilinde"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Описание (RU) 🇷🇺</label>
+                  <textarea
+                    name="description_ru"
+                    value={productForm.description_ru}
+                    onChange={handleProductChange}
+                    rows="3"
+                    placeholder="Описание на русском"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Описание (EN) 🇬🇧</label>
+                  <textarea
+                    name="description_en"
+                    value={productForm.description_en}
+                    onChange={handleProductChange}
+                    rows="3"
+                    placeholder="Description in English"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Цена</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="price"
+                    value={productForm.price}
+                    onChange={handleProductChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Цвет (hex)</label>
+                  <input
+                    type="text"
+                    name="color"
+                    value={productForm.color}
+                    onChange={handleProductChange}
+                    placeholder="#ffffff"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Объем</label>
+                  <input
+                    type="text"
+                    name="volume"
+                    value={productForm.volume}
+                    onChange={handleProductChange}
+                    placeholder="1л, 5л и т.д."
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Изображение продукта</label>
+                  <FileUploader type="products" label="📷 Загрузить фото" onUpload={(url) => setProductForm(prev => ({ ...prev, image_url: url }))} />
+                  <input
+                    type="text"
+                    name="image_url"
+                    value={productForm.image_url}
+                    onChange={handleProductChange}
+                    placeholder="URL или загрузите файл выше"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="in_stock"
+                      checked={productForm.in_stock}
+                      onChange={handleProductChange}
+                    />
+                    В наличии
+                  </label>
+                </div>
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      checked={productForm.featured}
+                      onChange={handleProductChange}
+                    />
+                    Рекомендуемый
+                  </label>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-button"
+                  onClick={() => {
+                    setShowProductModal(false);
+                    resetProductForm();
+                  }}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className="save-button">
+                  {editingProduct ? 'Сохранить' : 'Добавить'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Category modal */}
+      {showCategoryModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowCategoryModal(false);
+            setEditingCategory(null);
+          }}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}</h2>
+            <form onSubmit={handleCategorySubmit}>
+              <div className="form-row three-cols">
+                <div className="form-group">
+                  <label>Название (TM)</label>
+                  <input
+                    type="text"
+                    name="name_tm"
+                    value={categoryForm.name_tm}
+                    onChange={handleCategoryChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Название (RU)</label>
+                  <input
+                    type="text"
+                    name="name_ru"
+                    value={categoryForm.name_ru}
+                    onChange={handleCategoryChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Название (EN)</label>
+                  <input
+                    type="text"
+                    name="name_en"
+                    value={categoryForm.name_en}
+                    onChange={handleCategoryChange}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Описание</label>
+                  <textarea
+                    name="description"
+                    value={categoryForm.description}
+                    onChange={handleCategoryChange}
+                    rows="3"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-button"
+                  onClick={() => {
+                    setShowCategoryModal(false);
+                    setEditingCategory(null);
+                  }}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className="save-button">
+                  {editingCategory ? 'Сохранить' : 'Добавить'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminPanel;
+

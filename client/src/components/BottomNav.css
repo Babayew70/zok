@@ -1,0 +1,264 @@
+/* Only visible on mobile */
+.bottom-nav,
+.mobile-top-header {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    /* HIDE top navbar on mobile */
+    .navbar {
+        display: none !important;
+    }
+
+    /* Mobile top header with logo */
+    .mobile-top-header {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        background: var(--color-header-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--color-card-border);
+        padding: 0.55rem 1rem;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .mobile-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        color: var(--color-header-text);
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    .mobile-logo-img {
+        height: 40px;
+        width: auto;
+        object-fit: contain;
+    }
+
+    .mobile-top-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Add top + bottom padding for mobile bars */
+    .App {
+        padding-top: 50px;
+        padding-bottom: 65px;
+    }
+
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        background: var(--color-header-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid var(--color-card-border);
+        padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom));
+        justify-content: space-around;
+        align-items: center;
+        box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        font-size: 0.6rem;
+        font-weight: 500;
+        color: var(--color-text-light);
+        text-decoration: none;
+        background: none;
+        border: none;
+        padding: 0.3rem 0.4rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        min-width: 52px;
+        position: relative;
+        cursor: pointer;
+        font-family: var(--font-sans);
+    }
+
+    .bottom-nav-item svg {
+        font-size: 1.2rem;
+        transition: transform 0.2s ease;
+    }
+
+    .bottom-nav-item.active {
+        color: var(--color-primary);
+    }
+
+    .bottom-nav-item.active svg {
+        transform: scale(1.15);
+    }
+
+    .bottom-nav-item.active::before {
+        content: '';
+        position: absolute;
+        top: -0.35rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--color-secondary), var(--color-primary));
+        border-radius: 0 0 3px 3px;
+    }
+
+    .bottom-nav-icon-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bottom-badge {
+        position: absolute;
+        top: -6px;
+        right: -10px;
+        background: #e74c3c;
+        color: #fff;
+        font-size: 0.55rem;
+        font-weight: 700;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    /* Move floating messenger above bottom nav */
+    .floating-messenger {
+        bottom: 5rem;
+    }
+
+    /* === "More" Menu Overlay === */
+    .more-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1090;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: flex-end;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .more-menu {
+        width: 100%;
+        background: var(--color-header-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        padding: 1rem 1rem calc(80px + env(safe-area-inset-bottom));
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .more-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0.5rem 0.75rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--color-text);
+        border-bottom: 1px solid var(--color-card-border);
+        margin-bottom: 0.75rem;
+    }
+
+    .more-close {
+        background: none;
+        border: none;
+        color: var(--color-text-light);
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.3rem;
+        border-radius: 50%;
+        transition: background 0.2s;
+    }
+
+    .more-close:hover {
+        background: var(--color-glow);
+    }
+
+    .more-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+    }
+
+    .more-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 1rem 0.5rem;
+        border-radius: 14px;
+        text-decoration: none;
+        color: var(--color-text);
+        font-size: 0.78rem;
+        font-weight: 500;
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: var(--font-sans);
+    }
+
+    .more-item svg {
+        font-size: 1.4rem;
+        color: var(--color-primary);
+    }
+
+    .more-overlay.dark .more-item svg {
+        color: #fff;
+    }
+
+    .more-item:hover,
+    .more-item:active {
+        background: var(--color-glow);
+        color: var(--color-text);
+    }
+
+    .more-item.active {
+        background: var(--color-glow);
+        color: var(--color-primary);
+    }
+}

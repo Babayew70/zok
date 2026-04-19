@@ -1,0 +1,14 @@
+// Определяем среду на основе window.location
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+export const BASE_URL = isProduction
+    ? ''
+    : 'http://localhost:5002';
+
+export const UPLOADS_URL = isProduction
+    ? '/uploads'
+    : 'http://localhost:5002/uploads';
+
+const API_URL = `${BASE_URL}/api`;
+
+export default API_URL;

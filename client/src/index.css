@@ -1,0 +1,242 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+:root {
+  /* === ZOK Brand Colors === */
+  --color-primary: #4c4024;
+  --color-secondary: #cabf7e;
+  --color-accent: #b8a870;
+
+  /* === Light Theme Defaults === */
+  --color-text: #2d2a1e;
+  --color-text-light: #7a7460;
+  --color-background: #faf8f3;
+  --color-header-bg: rgba(255, 255, 255, 0.85);
+  --color-header-text: #4c4024;
+  --color-footer-bg: #3a3218;
+  --color-footer-text: #f0eadc;
+  --color-button-bg: #cabf7e;
+  --color-button-text: #3a3218;
+  --color-button-hover: #b8a870;
+  --color-link: #4c4024;
+  --color-link-hover: #cabf7e;
+  --color-border: #e6e0d0;
+  --color-card-bg: rgba(255, 255, 255, 0.7);
+  --color-card-shadow: rgba(76, 64, 36, 0.08);
+  --color-card-border: rgba(76, 64, 36, 0.1);
+  --color-surface: rgba(250, 248, 243, 0.9);
+  --color-glow: rgba(202, 191, 126, 0.3);
+
+  /* === Glassmorphism === */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px rgba(76, 64, 36, 0.12);
+  --glass-blur: blur(16px);
+
+  /* === Typography === */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  /* === Spacing === */
+  --section-padding: clamp(3rem, 8vw, 7rem);
+
+  /* === Transitions === */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* === Dark Theme Variables === */
+[data-theme="dark"] {
+  --color-primary: #cabf7e;
+  --color-secondary: #4c4024;
+  --color-text: #e8e4d8;
+  --color-text-light: #b0a990;
+  --color-background: #1e1b14;
+  --color-header-bg: rgba(30, 27, 20, 0.88);
+  --color-header-text: #cabf7e;
+  --color-footer-bg: #151208;
+  --color-footer-text: #cabf7e;
+  --color-button-bg: #cabf7e;
+  --color-button-text: #1e1b14;
+  --color-button-hover: #d4cb92;
+  --color-link: #cabf7e;
+  --color-link-hover: #e8e4d8;
+  --color-border: #3a3520;
+  --color-card-bg: rgba(42, 38, 28, 0.7);
+  --color-card-shadow: rgba(0, 0, 0, 0.3);
+  --color-card-border: rgba(202, 191, 126, 0.12);
+  --color-surface: rgba(30, 27, 20, 0.9);
+  --color-glow: rgba(202, 191, 126, 0.15);
+  --glass-bg: rgba(30, 27, 20, 0.6);
+  --glass-border: rgba(202, 191, 126, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* === Reset & Base === */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+  overflow-x: hidden;
+}
+
+/* === Noise/Texture Overlay on body === */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* === Headings === */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+h2 { font-size: clamp(1.5rem, 3.5vw, 2.5rem); }
+h3 { font-size: clamp(1.1rem, 2vw, 1.5rem); }
+
+/* === Links === */
+a {
+  color: var(--color-link);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+/* === Glassmorphism Card Utility === */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+}
+
+/* === Button Utilities === */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2rem;
+  background: var(--color-button-bg);
+  color: var(--color-button-text);
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 15px rgba(202, 191, 126, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+
+.btn-primary:hover {
+  background: var(--color-button-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(202, 191, 126, 0.4);
+}
+
+.btn-primary:hover::after {
+  transform: translateX(100%);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* === Section Title === */
+.section-title {
+  text-align: center;
+  margin-bottom: 3rem;
+  position: relative;
+  color: var(--color-text);
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-primary));
+  margin: 1rem auto 0;
+  border-radius: 2px;
+}
+
+/* === Scrollbar Styling === */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* === Selection === */
+::selection {
+  background: var(--color-secondary);
+  color: var(--color-primary);
+}
+
+/* === Loading Spinner === */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  font-size: 1.2rem;
+  color: var(--color-text-light);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}

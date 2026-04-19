@@ -1,0 +1,7 @@
+.App {
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+  position: relative;
+}

@@ -1,0 +1,100 @@
+.language-switcher {
+  position: relative;
+}
+
+.language-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(77, 65, 37, 0.1);
+  border: 1px solid rgba(77, 65, 37, 0.3);
+  border-radius: 25px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.language-button:hover {
+  background: rgba(77, 65, 37, 0.2);
+  border-color: rgba(77, 65, 37, 0.5);
+}
+
+.language-button svg:first-child {
+  font-size: 1rem;
+}
+
+.language-button svg:last-child {
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+}
+
+.language-button svg:last-child.open {
+  transform: rotate(180deg);
+}
+
+.language-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+}
+
+.language-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 999;
+  overflow: hidden;
+}
+
+.dark .language-dropdown {
+  background: #2d2d2d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background-color 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.language-option:hover {
+  background: rgba(77, 65, 37, 0.1);
+}
+
+.language-option.active {
+  background: rgba(77, 65, 37, 0.15);
+  font-weight: 600;
+}
+
+.language-flag {
+  font-size: 1.2rem;
+}
+
+.language-name {
+  flex: 1;
+}
+
+.language-option .check {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+

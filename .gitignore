@@ -1,0 +1,6 @@
+﻿node_modules/
+client/node_modules/
+build/
+client/build/
+.env
+nul

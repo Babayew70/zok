@@ -1,0 +1,181 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cooperation-modal {
+  background: var(--color-card-bg, #ffffff);
+  color: var(--color-text, #333);
+  padding: 2.5rem;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.cooperation-modal.dark {
+  background: var(--color-card-bg, #3d3820);
+  color: var(--color-text, #e0e0e0);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.modal-close:hover {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+.cooperation-modal h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  text-align: center;
+}
+
+.cooperation-modal .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.cooperation-modal label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.cooperation-modal input,
+.cooperation-modal select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--color-border, #e0e0e0);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: transparent;
+  color: inherit;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cooperation-modal input:focus,
+.cooperation-modal select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(76, 64, 36, 0.1);
+}
+
+.cooperation-modal select {
+  cursor: pointer;
+}
+
+.cooperation-modal .submit-button {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.cooperation-modal .submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(76, 64, 36, 0.4);
+}
+
+.cooperation-modal .submit-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.success-message {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.success-icon {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 2rem;
+  color: white;
+  animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.success-message p {
+  font-size: 1.2rem;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.error-message {
+  background: rgba(245, 87, 108, 0.1);
+  color: #f5576c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .cooperation-modal {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+  
+  .cooperation-modal h2 {
+    font-size: 1.5rem;
+  }
+}
+
